@@ -446,6 +446,9 @@ class KeelTelegramBot:
             username = update.effective_user.username
         user_is_admin = username in self._config.TELEGRAM_ADMIN_USERNAMES.value
 
+        text_approval = 'Approval by ' + from_user.full_name
+        text_reject = 'Reject by ' + from_user.full_name
+
         if data == BUTTON_DATA_NOTHING:
             return
 
@@ -459,10 +462,14 @@ class KeelTelegramBot:
                 self._api_client.approve(approval_id, approval_identifier, from_user.full_name)
                 answer_text = f"Approved '{approval_identifier}'"
                 KEEL_APPROVAL_ACTION_COUNTER.labels(action="approve", identifier=approval_identifier).inc()
-            elif (data == BUTTON_DATA_REJECT) and user_is_admin:
+                for chat_id in self._config.TELEGRAM_CHAT_IDS.value:
+                    send_message(bot, chat_id, text_approval)
+            elif data == BUTTON_DATA_REJECT:
                 self._api_client.reject(approval_id, approval_identifier, from_user.full_name)
                 answer_text = f"Rejected '{approval_identifier}'"
                 KEEL_APPROVAL_ACTION_COUNTER.labels(action="reject", identifier=approval_identifier).inc()
+                for chat_id in self._config.TELEGRAM_CHAT_IDS.value:
+                    send_message(bot, chat_id, text_reject)
             elif not user_is_admin:
                 bot.answer_callback_query(query_id, text="You don't have permission.")
             else:
