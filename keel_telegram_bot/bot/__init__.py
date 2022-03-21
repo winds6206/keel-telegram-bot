@@ -426,6 +426,9 @@ class KeelTelegramBot:
         query_id = query.id
         data = query.data
 
+        text_approval = 'Approval by ' + from_user.full_name
+        text_reject = 'Reject by ' + from_user.full_name
+
         if data == BUTTON_DATA_NOTHING:
             return
 
@@ -439,10 +442,14 @@ class KeelTelegramBot:
                 self._api_client.approve(approval_id, approval_identifier, from_user.full_name)
                 answer_text = f"Approved '{approval_identifier}'"
                 KEEL_APPROVAL_ACTION_COUNTER.labels(action="approve", identifier=approval_identifier).inc()
+                for chat_id in self._config.TELEGRAM_CHAT_IDS.value:
+                    send_message(bot, chat_id, text_approval)
             elif data == BUTTON_DATA_REJECT:
                 self._api_client.reject(approval_id, approval_identifier, from_user.full_name)
                 answer_text = f"Rejected '{approval_identifier}'"
                 KEEL_APPROVAL_ACTION_COUNTER.labels(action="reject", identifier=approval_identifier).inc()
+                for chat_id in self._config.TELEGRAM_CHAT_IDS.value:
+                    send_message(bot, chat_id, text_reject)
             else:
                 bot.answer_callback_query(query_id, text="Unknown button")
                 return
