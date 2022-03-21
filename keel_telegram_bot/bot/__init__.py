@@ -425,6 +425,10 @@ class KeelTelegramBot:
         query = update.callback_query
         query_id = query.id
         data = query.data
+        username = "N/A"
+        if update.effective_user is not None:
+            username = update.effective_user.username
+        user_is_admin = username in self._config.TELEGRAM_ADMIN_USERNAMES.value
 
         if data == BUTTON_DATA_NOTHING:
             return
@@ -435,14 +439,16 @@ class KeelTelegramBot:
             matches = re.search(r"^Identifier: (.*)", message_text, flags=re.MULTILINE)
             approval_identifier = matches.group(1)
 
-            if data == BUTTON_DATA_APPROVE:
+            if (data == BUTTON_DATA_APPROVE) and user_is_admin:
                 self._api_client.approve(approval_id, approval_identifier, from_user.full_name)
                 answer_text = f"Approved '{approval_identifier}'"
                 KEEL_APPROVAL_ACTION_COUNTER.labels(action="approve", identifier=approval_identifier).inc()
-            elif data == BUTTON_DATA_REJECT:
+            elif (data == BUTTON_DATA_REJECT) and user_is_admin:
                 self._api_client.reject(approval_id, approval_identifier, from_user.full_name)
                 answer_text = f"Rejected '{approval_identifier}'"
                 KEEL_APPROVAL_ACTION_COUNTER.labels(action="reject", identifier=approval_identifier).inc()
+            elif not user_is_admin:
+                bot.answer_callback_query(query_id, text="You don't have permission.")
             else:
                 bot.answer_callback_query(query_id, text="Unknown button")
                 return
